@@ -66,3 +66,34 @@ h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:56px;line-height:1;c
 
 @media(max-width:900px){#page.has-photo{grid-template-columns:1fr}.polaroid{display:none}#page{padding:24px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== cuter ===== */
+body,#cover{background-color:#3b5d46;background-image:linear-gradient(rgba(255,255,255,.07) 50%,transparent 50%),linear-gradient(90deg,rgba(255,255,255,.07) 50%,transparent 50%);background-size:56px 56px}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle,transparent 45%,rgba(20,40,28,.55));pointer-events:none}
+#page{position:relative;background:var(--paper) radial-gradient(circle,rgba(62,96,73,.16) 1.5px,transparent 1.7px) 0 0/24px 24px;grid-template-columns:330px 1fr}
+#page::after{content:"♡";position:absolute;top:-12px;right:64px;width:36px;height:74px;background:var(--green);color:var(--paper);display:grid;place-items:start center;padding-top:14px;font-size:18px;clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%)}
+#page::before{content:"🌿";position:absolute;right:20px;bottom:8px;font-size:44px;opacity:.35;pointer-events:none}
+h2::after{content:"";display:block;width:112px;height:8px;margin-top:10px;background:radial-gradient(circle at 4px 4px,var(--sage) 3px,transparent 3.5px) 0 0/16px 8px repeat-x}
+.sticker{align-self:center;justify-self:center;width:290px;aspect-ratio:1;border-radius:50%;border:3px dashed var(--sage);background:rgba(168,185,155,.22);display:grid;place-content:center;text-align:center;font-size:96px;animation:wobble 4s ease-in-out infinite}
+.sticker small{font-family:Caveat,cursive;font-size:28px;color:var(--brown)}
+@keyframes wobble{50%{transform:rotate(4deg) scale(1.04)}}
+.tools{position:fixed;top:16px;left:20px;right:20px;z-index:5;display:flex;gap:10px;pointer-events:none}
+.tools button{pointer-events:auto;background:var(--paper);color:var(--brown);padding:8px 16px;border-radius:999px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+#home{margin-right:auto}
+#music{position:static}
+#bar{height:8px;touch-action:none;cursor:pointer}
+#bar::before{content:"";position:absolute;inset:-16px 0}
+#yarn{width:30px;height:30px;margin:-15px 0 0 -15px;cursor:grab}
+#bar.drag #yarn{cursor:grabbing;transition:none;scale:1.15}
+#bar.drag #fill{transition:none}
+.float{position:absolute;bottom:-50px;opacity:.5;animation:rise linear infinite,sway ease-in-out infinite alternate}
+@keyframes rise{to{transform:translateY(-115vh) rotate(20deg)}}
+.heart{position:fixed;z-index:30;pointer-events:none;font-size:22px;animation:up 1s ease-out forwards}
+@keyframes up{to{transform:translateY(-70px) scale(1.4);opacity:0}}
+.text .q{font-size:21px;margin-bottom:16px}
+.opt{display:block;width:100%;text-align:left;background:#fff;border:2px dashed var(--sage);border-radius:14px;padding:12px 18px;margin-bottom:10px;font-size:17px;color:var(--ink);transition:transform .15s,background .2s}
+.opt:hover:not(:disabled){transform:translateX(6px);background:#eef3e8}
+.opt.good{background:#cfe3c2;border:2px solid var(--green)}
+.opt.bad{background:#eadfd2;opacity:.6;animation:shake .4s}
+@keyframes shake{25%{translate:-7px 0}75%{translate:7px 0}}
+@media(max-width:900px){.sticker{display:none}}
