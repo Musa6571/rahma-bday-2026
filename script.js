@@ -207,3 +207,16 @@ $('#home').onclick = () => {
   sfx.pop();
 };
 $('#sfx').onclick = () => { sfxOn = !sfxOn; $('#sfx').textContent = sfxOn ? '🔔' : '🔕'; sfx.pop(); };
+
+/* two songs: they play one after the other, and ⏭ skips */
+const SONGS = [['Still choose me', 'audio/still-choose-me.mp3'], ['Habibti', 'audio/habibti.mp3']];
+let si = 0;
+const loadSong = n => {
+  si = (n + SONGS.length) % SONGS.length;
+  song.src = SONGS[si][1];
+  music.textContent = '♪ ' + SONGS[si][0];
+};
+loadSong(0);
+const nextSong = () => { loadSong(si + 1); song.play().catch(() => {}); };
+song.onended = nextSong;
+$('#skip').onclick = nextSong;
