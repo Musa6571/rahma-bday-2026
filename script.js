@@ -264,3 +264,21 @@ function unlockSecret() {
   try { localStorage.setItem('rb-unlocked', '1'); } catch (e) {}
   refreshNav(); place(i / (pages.length - 1)); sfx.good(); confetti();
 }
+
+/* countdown: the book only opens at midnight on 8 November 2026 (the laptop's local time) */
+const OPEN_AT = new Date(2026, 10, 8, 0, 0, 0);
+function tick() {
+  const ms = OPEN_AT - new Date();
+  if (ms <= 0 || location.search.includes('test')) {
+    $('#cd').innerHTML = 'Happy birthday 🎂';
+    $('#open').disabled = false;
+    return true;
+  }
+  const t = Math.floor(ms / 1000), p = n => String(n).padStart(2, '0');
+  $('#cd').innerHTML = `Opens at midnight<br>${Math.floor(t / 86400)}d ${p(Math.floor(t % 86400 / 3600))}h ${p(Math.floor(t % 3600 / 60))}m ${p(t % 60)}s`;
+  $('#open').disabled = true;
+  return false;
+}
+if (!tick()) {
+  const timer = setInterval(() => { if (tick()) { clearInterval(timer); confetti(); } }, 1000);
+}
