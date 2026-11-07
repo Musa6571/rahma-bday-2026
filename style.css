@@ -108,3 +108,8 @@ h2::after{content:"";display:block;width:112px;height:8px;margin-top:10px;backgr
 .handwritten{font-family:Caveat,cursive;font-size:30px;color:var(--green);line-height:1.2}
 .ticket{border:3px dashed var(--green);border-radius:16px;padding:18px 22px;background:#fff;text-align:center;transform:rotate(-1.5deg);margin-top:8px}
 .ticket .big{font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;color:var(--brown);margin:4px 0}
+
+/* countdown lock */
+.count{font-size:19px;line-height:1.5;color:#ecd9b8;margin-bottom:14px}
+#open:disabled{opacity:.4;cursor:not-allowed}
+#open:disabled:hover{transform:none}
