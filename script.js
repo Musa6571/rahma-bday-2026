@@ -75,8 +75,14 @@ function renderQuiz(box) {
   box.appendChild(q);
   const ask = () => {
     if (qi >= QUIZ.length) {
-      q.innerHTML = `<div class="q">${score === QUIZ.length ? 'Five out of five! You know us perfectly 💚' : `You got ${score} out of ${QUIZ.length} first try. Still my favourite 🤎`}</div><button class="opt" id="again">Play again 🧶</button>`;
+      const perfect = score === QUIZ.length;
+      if (perfect) unlockSecret();
+      q.innerHTML = `<div class="q">${perfect ? 'Five out of five! You know us perfectly 💚' : `You got ${score} out of ${QUIZ.length} first try. Still my favourite 🤎`}</div>` +
+        (perfect ? '<button class="opt good" id="goSecret">A secret page just unlocked 🔓 Open it</button>'
+          : unlocked ? '' : '<div class="q">Get a perfect score and something hidden unlocks 👀</div>') +
+        '<button class="opt" id="again">Play again 🧶</button>';
       q.querySelector('#again').onclick = () => { qi = 0; score = 0; ask(); };
+      const g = q.querySelector('#goSecret'); if (g) g.onclick = () => show(pages.length - 1);
       return;
     }
     const [text, opts, a] = QUIZ[qi];
@@ -119,7 +125,7 @@ function parse(md) {
 
 /* show a page */
 let dragging = false;
-const stickerFor = p => p.quiz ? ['🧸', 'quiz time'] : p.last ? ['🎂', 'happy birthday'] : p.first ? ['💌', 'just for you'] : ['📷', 'photo coming soon'];
+const stickerFor = p => p.quiz ? ['🧸', 'quiz time'] : p.incident ? ['🔒', 'classified'] : p.secret ? ['🎟️', 'secret ending'] : p.last ? ['🎂', 'happy birthday'] : p.first ? ['💌', 'just for you'] : ['📷', 'photo coming soon'];
 const stickerHTML = p => { const [e, t] = stickerFor(p); return `<div class="sticker"><span>${e}</span><small>${t}</small></div>`; };
 function place(pct) {
   $('#fill').style.width = pct * 100 + '%';
@@ -137,13 +143,13 @@ function show(n) {
     (p.photo ? `<figure class="polaroid"><img src="images/image${p.photo}.jpg" alt=""><figcaption>Reason ${p.photo}</figcaption></figure>` : stickerHTML(p)) +
     `<div class="text"><div class="eyebrow">${esc(p.eyebrow)}</div><h2>${esc(p.title)}</h2>${p.paras.map(t => `<p>${inline(t)}</p>`).join('')}</div>`;
   if (p.quiz) renderQuiz(page.querySelector('.text'));
+  if (p.incident) renderIncident(page.querySelector('.text'));
+  if (p.secret) page.querySelector('.text').insertAdjacentHTML('beforeend', ticketHTML);
   if (p.photo) page.querySelector('img').addEventListener('error', e => { e.target.closest('figure').outerHTML = stickerHTML(p); });
   if (!dragging) place(pages.length > 1 ? i / (pages.length - 1) : 0);
-  $('#count').textContent = `${i + 1} / ${pages.length}`;
-  $('#prev').disabled = i === 0;
-  $('#next').disabled = i === pages.length - 1;
+  refreshNav();
   if (i !== old) sfx.flip();
-  if (i === pages.length - 1 && pages.length > 1) confetti();
+  if ((p.last || p.secret) && pages.length > 1) confetti();
 }
 
 function confetti() {
@@ -180,7 +186,10 @@ fetch('book.md')
   .then(t => {
     pages = parse(t); if (!pages.length) throw 0;
     pages[0].first = true; pages[pages.length - 1].last = true;
-    pages.splice(pages.length - 1, 0, { quiz: true, eyebrow: 'A tiny quiz', title: 'How well do you know us?', paras: [], photo: 0 });
+    const k = pages.findIndex(p => p.photo === 11);
+    pages.splice(k < 0 ? pages.length - 1 : k + 1, 0, { incident: true, eyebrow: 'Classified', title: 'The Incidents', paras: [], photo: 0 });
+    try { if (localStorage.getItem('rb-unlocked')) { unlocked = true; pages.push(secretPage); } } catch (e) {}
+    pages.splice(pages.length - (unlocked ? 2 : 1), 0, { quiz: true, eyebrow: 'A tiny quiz', title: 'How well do you know us?', paras: [], photo: 0 });
     show(0);
   })
   .catch(() => {
@@ -220,3 +229,38 @@ loadSong(0);
 const nextSong = () => { loadSong(si + 1); song.play().catch(() => {}); };
 song.onended = nextSong;
 $('#skip').onclick = nextSong;
+
+/* classified incidents page */
+const FILES = [['Incident #1', 'Barking Park'], ['Incident #2', ''], ['Incident #3', ''], ['Incident #4', '']];
+const DENIED = ['🚫 Access denied. This file is above your clearance.', 'Nice try. Whatever happened in Barking Park stays in Barking Park.',
+  'Security has been notified. (Security is Musa.)', 'Still no. Stop poking the file. 😌', 'Okay fine… you will have to ask me in person 👀'];
+let denied = 0;
+function renderIncident(box) {
+  const w = document.createElement('div');
+  w.innerHTML = '<div class="tape"></div><div class="stamp">CONFIDENTIAL</div>' +
+    FILES.map(([n, t]) => `<button class="opt file">📁 ${n}: ${t ? esc(t) : '<span class="redact">xxxxxxxxxxxx</span>'} <b>cannot be opened</b></button>`).join('') +
+    '<div class="status">Click a file. Go on. 👀</div><div class="handwritten">Whatever happened in Barking Park stays in Barking Park.</div>';
+  box.appendChild(w);
+  w.querySelectorAll('.file').forEach(b => b.onclick = () => {
+    b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+    sfx.bad();
+    w.querySelector('.status').textContent = DENIED[denied++ % DENIED.length];
+  });
+}
+
+/* secret ending: unlocked by a perfect quiz score */
+let unlocked = false;
+const secretPage = { secret: true, eyebrow: 'Secret ending', title: 'You know us perfectly', photo: 0,
+  paras: ['Five out of five. Nobody gets to see this page unless they really know us.', 'So here is something real:'] };
+const ticketHTML = '<div class="ticket"><div class="eyebrow">Coupon</div><div class="big">One date, planned by me, chosen by you</div><p>Pick the place and the day. I’ll be there.</p><small>valid forever · redeem in person 🤎</small></div>';
+function refreshNav() {
+  $('#count').textContent = `${i + 1} / ${pages.length}`;
+  $('#prev').disabled = i === 0;
+  $('#next').disabled = i === pages.length - 1;
+}
+function unlockSecret() {
+  if (unlocked) return;
+  unlocked = true; pages.push(secretPage);
+  try { localStorage.setItem('rb-unlocked', '1'); } catch (e) {}
+  refreshNav(); place(i / (pages.length - 1)); sfx.good(); confetti();
+}
