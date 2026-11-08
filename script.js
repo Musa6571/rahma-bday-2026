@@ -125,7 +125,7 @@ function parse(md) {
 
 /* show a page */
 let dragging = false;
-const stickerFor = p => p.quiz ? ['🧸', 'quiz time'] : p.incident ? ['🔒', 'classified'] : p.secret ? ['🎟️', 'secret ending'] : p.last ? ['🎂', 'happy birthday'] : p.first ? ['💌', 'just for you'] : ['📷', 'photo coming soon'];
+const stickerFor = p => isLocked(p) ? ['🔒', p.last ? 'finish the chapters' : 'locked'] : p.quiz ? ['🧸', 'quiz time'] : p.incident ? ['🔒', 'classified'] : p.secret ? ['🎟️', 'secret ending'] : p.last ? ['🎂', 'happy birthday'] : p.first ? ['💌', 'just for you'] : ['📷', 'photo coming soon'];
 const stickerHTML = p => { const [e, t] = stickerFor(p); return `<div class="sticker"><span>${e}</span><small>${t}</small></div>`; };
 function place(pct) {
   $('#fill').style.width = pct * 100 + '%';
@@ -133,23 +133,25 @@ function place(pct) {
   $('#yarn').style.transform = `rotate(${pct * 1440}deg)`;
 }
 function show(n) {
+  stopGame(); stopGame = () => {};
   const old = i, dir = n >= i ? 1 : -1;
   i = Math.max(0, Math.min(pages.length - 1, n));
-  const p = pages[i];
+  const p = pages[i], locked = isLocked(p);
   page.style.setProperty('--d', dir * 40 + 'px');
   page.style.animation = 'none'; void page.offsetWidth; page.style.animation = '';
   page.classList.add('has-photo');
   page.innerHTML =
-    (p.photo ? `<figure class="polaroid"><img src="images/image${p.photo}.jpg" alt=""><figcaption>Reason ${p.photo}</figcaption></figure>` : stickerHTML(p)) +
-    `<div class="text"><div class="eyebrow">${esc(p.eyebrow)}</div><h2>${esc(p.title)}</h2>${p.paras.map(t => `<p>${inline(t)}</p>`).join('')}</div>`;
-  if (p.quiz) renderQuiz(page.querySelector('.text'));
+    (p.photo && !locked ? `<figure class="polaroid"><img src="images/image${p.photo}.jpg" alt=""><figcaption>Reason ${p.photo}</figcaption></figure>` : stickerHTML(p)) +
+    `<div class="text"><div class="eyebrow">${esc(p.eyebrow)}</div><h2>${locked ? 'Locked 🔒' : esc(p.title)}</h2>${locked ? '' : p.paras.map(t => `<p>${inline(t)}</p>`).join('')}</div>`;
+  if (locked) renderGate(page.querySelector('.text'), p);
+  else if (p.quiz) renderQuiz(page.querySelector('.text'));
   if (p.incident) renderIncident(page.querySelector('.text'));
   if (p.secret) page.querySelector('.text').insertAdjacentHTML('beforeend', ticketHTML);
-  if (p.photo) page.querySelector('img').addEventListener('error', e => { e.target.closest('figure').outerHTML = stickerHTML(p); });
+  if (p.photo && !locked) page.querySelector('img').addEventListener('error', e => { e.target.closest('figure').outerHTML = stickerHTML(p); });
   if (!dragging) place(pages.length > 1 ? i / (pages.length - 1) : 0);
   refreshNav();
   if (i !== old) sfx.flip();
-  if ((p.last || p.secret) && pages.length > 1) confetti();
+  if ((p.last || p.secret) && !locked && pages.length > 1) confetti();
 }
 
 function confetti() {
@@ -168,6 +170,7 @@ function confetti() {
 $('#next').onclick = () => show(i + 1);
 $('#prev').onclick = () => show(i - 1);
 addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
   if (e.key === 'ArrowRight') show(i + 1);
   if (e.key === 'ArrowLeft') show(i - 1);
 });
@@ -281,4 +284,121 @@ function tick() {
 }
 if (!tick()) {
   const timer = setInterval(() => { if (tick()) { clearInterval(timer); confetti(); } }, 1000);
+}
+
+/* ===== chapter games: every chapter (and the quiz) is locked until she wins its game ===== */
+const GAMES = true; // set to false to turn all the games off
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem('rb-done') || '[]')); } catch (e) {}
+const saveDone = () => { try { localStorage.setItem('rb-done', JSON.stringify([...done])); } catch (e) {} };
+const chaptersDone = () => [...done].filter(k => k[0] === 'c').length;
+const isLocked = p => GAMES && !location.search.includes('skip') &&
+  (p.photo ? !done.has('c' + p.photo) : p.quiz ? !done.has('quiz') : p.last ? chaptersDone() < 15 : false);
+let stopGame = () => {};
+const rnd = (a, b) => a + Math.random() * (b - a);
+const shuffle = a => a.map(x => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+
+const TRIVIA = [
+  ['Which hobby is Rahma’s?', ['Skateboarding', 'Crochet', 'Gaming', 'Fishing'], 1],
+  ['Which two colours does she love most?', ['Pink and blue', 'Brown and green', 'Red and gold', 'Purple and white'], 1],
+  ['Which month is her birthday?', ['March', 'November', 'July', 'January'], 1],
+  ['What does the name Rahma mean?', ['Mercy and compassion', 'Brave warrior', 'Little star', 'Sweet honey'], 0],
+  ['What does she love to read?', ['Car manuals', 'Books', 'Maps', 'Nothing'], 1]
+];
+const QUIZ_GATE = ['Which two colours is this whole website made of?', ['Brown and green', 'Pink and blue', 'Red and yellow', 'Black and white'], 0];
+
+function trivia(box, d, win, qn) {
+  const [t, opts, a] = Array.isArray(qn) ? qn : TRIVIA[qn % TRIVIA.length];
+  const o = shuffle(opts.map((x, k) => [x, k === a]));
+  box.innerHTML = `<div class="q">${t}</div>` + o.map(x => `<button class="opt">${x[0]}</button>`).join('');
+  box.querySelectorAll('.opt').forEach((b, k) => b.onclick = () => {
+    if (o[k][1]) { b.classList.add('good'); sfx.good(); setTimeout(win, 700); }
+    else { b.classList.add('bad'); b.disabled = true; sfx.bad(); }
+  });
+}
+function balloons(box, d, win) {
+  const need = 6 + d * 3; let hit = 0;
+  box.innerHTML = `<div class="q">Pop ${need} balloons 🎈 <b id="hit">0</b> / ${need}</div><div class="arena"></div>`;
+  const ar = box.querySelector('.arena');
+  const t = setInterval(() => {
+    const b = document.createElement('button');
+    b.className = 'balloon'; b.textContent = ['🎈', '💚', '🤎', '🌷'][Math.random() * 4 | 0];
+    b.style.left = rnd(2, 88) + '%'; b.style.animationDuration = rnd(3.5, 5.5) - d * .5 + 's';
+    b.onanimationend = () => b.remove();
+    b.onclick = () => {
+      b.remove(); sfx.pop(); hit++;
+      box.querySelector('#hit').textContent = hit;
+      if (hit >= need) { clearInterval(t); win(); }
+    };
+    ar.appendChild(b);
+  }, 650 - d * 80);
+  return () => clearInterval(t);
+}
+function match(box, d, win) {
+  const em = ['🌷', '📖', '🧶', '🤎', '☕', '🌿', '🍂', '✨'].slice(0, 6 + d);
+  let open = [], left = em.length;
+  box.innerHTML = '<div class="q">Match all the pairs 🧶</div><div class="grid"></div>';
+  const g = box.querySelector('.grid');
+  shuffle([...em, ...em]).forEach(e => {
+    const c = document.createElement('button');
+    c.className = 'card'; c.textContent = '❔';
+    c.onclick = () => {
+      if (open.length > 1 || c.classList.contains('up')) return;
+      c.classList.add('up'); c.textContent = e; c.dataset.e = e; open.push(c); sfx.pop();
+      if (open.length < 2) return;
+      if (open[0].dataset.e === open[1].dataset.e) { open = []; sfx.good(); if (!--left) setTimeout(win, 500); }
+      else setTimeout(() => { open.forEach(x => { x.classList.remove('up'); x.textContent = '❔'; }); open = []; }, 700);
+    };
+    g.appendChild(c);
+  });
+}
+function tap(box, d, win) {
+  const need = 20 + d * 8, secs = 8; let n = 0, started = false, timer;
+  box.innerHTML = `<div class="q">Tap the yarn ball ${need} times in ${secs} seconds 🧶</div><button class="yarnbtn">🧶</button><div class="status">0 / ${need}</div>`;
+  const st = box.querySelector('.status');
+  box.querySelector('.yarnbtn').onclick = () => {
+    if (!started) { started = true; timer = setTimeout(() => { n = 0; started = false; st.textContent = 'Too slow! Try again 🧶'; sfx.bad(); }, secs * 1000); }
+    n++; tone(500 + n * 20, .05, 'triangle', .08);
+    if (n >= need) { clearTimeout(timer); win(); } else st.textContent = `${n} / ${need}`;
+  };
+  return () => clearTimeout(timer);
+}
+const WORDS = ['CROCHET', 'HABIBTI', 'BIRTHDAY', 'BARKING', 'PRINCESS', 'LIBRARY'];
+function word(box, d, win) {
+  const w = WORDS[Math.random() * WORDS.length | 0]; let sc = w;
+  while (sc === w) sc = shuffle([...w]).join('');
+  box.innerHTML = `<div class="q">Unscramble the word 🔤</div><div class="scr">${sc}</div><input class="inp" maxlength="12" autocomplete="off"><button class="opt" style="display:inline-block;width:auto">Check</button><div class="status"></div>`;
+  const inp = box.querySelector('input'), st = box.querySelector('.status');
+  const check = () => { if (inp.value.trim().toUpperCase() === w) win(); else { st.textContent = 'Not quite, try again 🧐'; sfx.bad(); } };
+  box.querySelector('button').onclick = check;
+  inp.onkeydown = e => { if (e.key === 'Enter') check(); };
+  inp.focus();
+}
+function hunt(box, d, win) {
+  const n = 12 + d * 6, k = Math.random() * n | 0;
+  box.innerHTML = '<div class="q">One leaf is hiding a heart 💚 Find it!</div><div class="grid"></div>';
+  const g = box.querySelector('.grid');
+  for (let j = 0; j < n; j++) {
+    const c = document.createElement('button');
+    c.className = 'card'; c.textContent = '🍃';
+    c.onclick = () => {
+      c.disabled = true; c.classList.add('up');
+      if (j === k) { c.textContent = '💚'; sfx.good(); setTimeout(win, 700); } else { c.textContent = '🌱'; sfx.pop(); }
+    };
+    g.appendChild(c);
+  }
+}
+const GAME_LIST = [balloons, trivia, match, tap, word, hunt];
+function renderGate(box, p) {
+  const w = document.createElement('div');
+  box.appendChild(w);
+  if (p.last) {
+    w.innerHTML = `<div class="q">The last page is locked 🔒 Unlock all 15 chapters first. ${15 - chaptersDone()} to go.</div><button class="opt" id="gofirst">Take me to the next locked chapter</button>`;
+    w.querySelector('#gofirst').onclick = () => show(pages.findIndex(x => x.photo && isLocked(x)));
+    return;
+  }
+  const win = () => { done.add(p.quiz ? 'quiz' : 'c' + p.photo); saveDone(); sfx.good(); confetti(); setTimeout(() => show(i), 600); };
+  const gi = p.quiz ? 1 : (p.photo - 1) % 6, d = p.quiz ? 0 : Math.floor((p.photo - 1) / 6);
+  w.innerHTML = '<div class="q">Win this little game to open the page 🔓</div><div class="gate"></div>';
+  stopGame = GAME_LIST[gi](w.querySelector('.gate'), d, win, p.quiz ? QUIZ_GATE : p.photo) || (() => {});
 }

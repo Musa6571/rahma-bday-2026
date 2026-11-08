@@ -113,3 +113,16 @@ h2::after{content:"";display:block;width:112px;height:8px;margin-top:10px;backgr
 .count{font-size:19px;line-height:1.5;color:#ecd9b8;margin-bottom:14px}
 #open:disabled{opacity:.4;cursor:not-allowed}
 #open:disabled:hover{transform:none}
+
+/* games */
+.arena{position:relative;height:300px;overflow:hidden;border:3px dashed var(--sage);border-radius:16px;background:rgba(255,255,255,.55)}
+.balloon{position:absolute;top:-50px;font-size:44px;background:none;animation:fallb linear forwards}
+@keyframes fallb{to{transform:translateY(360px)}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,68px);gap:10px}
+.card{width:68px;height:68px;font-size:34px;background:#fff;border:2px dashed var(--sage);border-radius:12px;transition:transform .2s}
+.card:hover:not(:disabled){transform:rotate(-5deg) scale(1.05)}
+.card.up{background:#cfe3c2;border-style:solid}
+.yarnbtn{font-size:76px;background:none;display:block;margin:10px auto;transition:transform .08s}
+.yarnbtn:active{transform:scale(.88) rotate(20deg)}
+.inp{font:inherit;font-size:20px;padding:10px 16px;border:2px dashed var(--sage);border-radius:12px;text-transform:uppercase;width:220px;margin-right:8px}
+.scr{font-size:34px;letter-spacing:6px;color:var(--brown);font-weight:700;margin:10px 0}
